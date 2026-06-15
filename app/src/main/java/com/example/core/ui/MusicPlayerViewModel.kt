@@ -24,7 +24,7 @@ class MusicPlayerViewModel(
     val favorites = repository.favorites.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val recentlyPlayed = repository.recentlyPlayed.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
-    init {
+    fun loadAudioFiles() {
         viewModelScope.launch {
             repository.scanAudioFiles()
         }

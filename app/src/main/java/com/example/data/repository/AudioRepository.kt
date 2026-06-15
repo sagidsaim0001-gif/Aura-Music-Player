@@ -42,7 +42,7 @@ class AudioRepository(
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.SIZE
         )
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 30000" // ignore <30s
+        val selection = "${MediaStore.Audio.Media.DURATION} >= 10000" // ignore <10s
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
         context.contentResolver.query(

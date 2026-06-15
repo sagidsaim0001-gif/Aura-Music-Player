@@ -29,6 +29,14 @@ import com.example.feature.home.HomeScreen
 import com.example.feature.songs.SongsScreen
 import com.example.feature.player.NowPlayingSheet
 import com.example.feature.components.MiniPlayer
+import com.example.feature.albums.AlbumsScreen
+import com.example.feature.playlists.PlaylistsScreen
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.QueueMusic
 
 class MainActivity : ComponentActivity() {
   private lateinit var audioHandler: AudioHandler
@@ -104,13 +112,48 @@ fun MainScreen(viewModel: MusicPlayerViewModel) {
     val navController = rememberNavController()
     var showNowPlaying by remember { mutableStateOf(false) }
     
+    LaunchedEffect(Unit) {
+        viewModel.loadAudioFiles()
+    }
+    
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            MiniPlayer(
-                viewModel = viewModel,
-                onExpand = { showNowPlaying = true }
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                MiniPlayer(
+                    viewModel = viewModel,
+                    onExpand = { showNowPlaying = true }
+                )
+                NavigationBar {
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route
+                    
+                    NavigationBarItem(
+                        selected = currentRoute?.contains("HomeRoute") == true,
+                        onClick = { navController.navigate(HomeRoute) { launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                        label = { Text("Home") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute?.contains("SongsRoute") == true,
+                        onClick = { navController.navigate(SongsRoute) { launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(Icons.Default.MusicNote, contentDescription = "Songs") },
+                        label = { Text("Songs") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute?.contains("AlbumsRoute") == true,
+                        onClick = { navController.navigate(AlbumsRoute) { launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(Icons.Default.Album, contentDescription = "Albums") },
+                        label = { Text("Albums") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute?.contains("PlaylistsRoute") == true,
+                        onClick = { navController.navigate(PlaylistsRoute) { launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(Icons.Default.QueueMusic, contentDescription = "Playlists") },
+                        label = { Text("Playlists") }
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -124,7 +167,12 @@ fun MainScreen(viewModel: MusicPlayerViewModel) {
             composable<SongsRoute> {
                 SongsScreen(viewModel, navController)
             }
-            // Other routes...
+            composable<AlbumsRoute> {
+                AlbumsScreen(viewModel, navController)
+            }
+            composable<PlaylistsRoute> {
+                PlaylistsScreen(viewModel, navController)
+            }
         }
     }
     

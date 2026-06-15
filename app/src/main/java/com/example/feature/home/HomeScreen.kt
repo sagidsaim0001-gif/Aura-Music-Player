@@ -41,7 +41,12 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Aura Music", fontWeight = FontWeight.Bold) },
+                title = { 
+                    Column {
+                        Text("Aura Music", fontWeight = FontWeight.Bold)
+                        Text("Welcome, SAji SAim", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                },
                 actions = {
                     IconButton(onClick = { /* Search */ }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
