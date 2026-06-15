@@ -34,6 +34,15 @@ class AudioHandler(private val context: Context, private val repository: AudioRe
     private val _duration = MutableStateFlow(0L)
     val duration = _duration.asStateFlow()
 
+    private val _playbackSpeed = MutableStateFlow(1.0f)
+    val playbackSpeed = _playbackSpeed.asStateFlow()
+    
+    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    val repeatMode = _repeatMode.asStateFlow()
+
+    private val _shuffleModeEnabled = MutableStateFlow(false)
+    val shuffleModeEnabled = _shuffleModeEnabled.asStateFlow()
+
     init {
         initializeController()
         startTrackingProgress()
@@ -61,6 +70,14 @@ class AudioHandler(private val context: Context, private val repository: AudioRe
                         }
                     }
                     _duration.value = mediaController?.duration?.coerceAtLeast(0L) ?: 0L
+                }
+
+                override fun onRepeatModeChanged(repeatMode: Int) {
+                    _repeatMode.value = repeatMode
+                }
+
+                override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                    _shuffleModeEnabled.value = shuffleModeEnabled
                 }
             })
         }, context.mainExecutor)
@@ -108,6 +125,27 @@ class AudioHandler(private val context: Context, private val repository: AudioRe
 
     fun seekTo(position: Long) {
         mediaController?.seekTo(position)
+    }
+
+    fun seekForward() {
+        mediaController?.seekForward()
+    }
+
+    fun seekBack() {
+        mediaController?.seekBack()
+    }
+
+    fun setRepeatMode(repeatMode: Int) {
+        mediaController?.repeatMode = repeatMode
+    }
+
+    fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
+        mediaController?.shuffleModeEnabled = shuffleModeEnabled
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        _playbackSpeed.value = speed
+        mediaController?.setPlaybackSpeed(speed)
     }
 
     private fun startTrackingProgress() {

@@ -7,12 +7,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -37,6 +39,8 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Settings
+import com.example.feature.settings.SettingsScreen
 
 class MainActivity : ComponentActivity() {
   private lateinit var audioHandler: AudioHandler
@@ -49,15 +53,56 @@ class MainActivity : ComponentActivity() {
     audioHandler = AudioHandler(this, appContainer.audioRepository)
     
     setContent {
-      MyApplicationTheme(darkTheme = true) { // Dark-first design
         val viewModel: MusicPlayerViewModel = viewModel(
             factory = MusicPlayerViewModelFactory(appContainer.audioRepository, audioHandler)
         )
         
-        AuraMusicApp(viewModel)
-      }
+        AuraMusicAppRoot(viewModel)
     }
   }
+}
+
+@Composable
+fun AuraMusicAppRoot(viewModel: MusicPlayerViewModel) {
+    val currentTheme by viewModel.currentTheme.collectAsStateWithLifecycle()
+    val keepScreenAwake by viewModel.keepScreenAwake.collectAsStateWithLifecycle()
+    
+    val view = androidx.compose.ui.platform.LocalView.current
+    SideEffect {
+        view.keepScreenOn = keepScreenAwake
+    }
+
+    var showSplash by remember { mutableStateOf(true) }
+    
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(2000)
+        showSplash = false
+    }
+
+    MyApplicationTheme(themeOption = currentTheme) {
+        if (showSplash) {
+            SplashScreen()
+        } else {
+            AuraMusicApp(viewModel)
+        }
+    }
+}
+
+@Composable
+fun SplashScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "SAJiD ❤️\uD83D\uDD25",
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        )
+    }
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -135,10 +180,10 @@ fun MainScreen(viewModel: MusicPlayerViewModel) {
                         label = { Text("Home") }
                     )
                     NavigationBarItem(
-                        selected = currentRoute?.contains("SongsRoute") == true,
-                        onClick = { navController.navigate(SongsRoute) { launchSingleTop = true; restoreState = true } },
-                        icon = { Icon(Icons.Default.MusicNote, contentDescription = "Songs") },
-                        label = { Text("Songs") }
+                        selected = currentRoute?.contains("SettingsRoute") == true,
+                        onClick = { navController.navigate(SettingsRoute) { launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                        label = { Text("Settings") }
                     )
                     NavigationBarItem(
                         selected = currentRoute?.contains("AlbumsRoute") == true,
@@ -164,8 +209,8 @@ fun MainScreen(viewModel: MusicPlayerViewModel) {
             composable<HomeRoute> {
                 HomeScreen(viewModel, navController)
             }
-            composable<SongsRoute> {
-                SongsScreen(viewModel, navController)
+            composable<SettingsRoute> {
+                SettingsScreen(viewModel, navController)
             }
             composable<AlbumsRoute> {
                 AlbumsScreen(viewModel, navController)

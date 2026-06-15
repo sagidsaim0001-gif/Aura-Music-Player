@@ -1,5 +1,6 @@
 package com.example.feature.player
 
+import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.example.core.ui.MusicPlayerViewModel
 import com.example.data.repository.AudioRepository
@@ -31,6 +33,11 @@ fun NowPlayingSheet(
     val progress by viewModel.audioHandler.progress.collectAsStateWithLifecycle()
     val duration by viewModel.audioHandler.duration.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val playbackSpeed by viewModel.audioHandler.playbackSpeed.collectAsStateWithLifecycle()
+    val repeatMode by viewModel.audioHandler.repeatMode.collectAsStateWithLifecycle()
+    val shuffleMode by viewModel.audioHandler.shuffleModeEnabled.collectAsStateWithLifecycle()
+    val currentSongInfo by viewModel.currentSongInfo.collectAsStateWithLifecycle()
+    val blurBg by viewModel.blurBackground.collectAsStateWithLifecycle()
 
     val isFavorite = currentSong?.let { song -> favorites.any { it.songId == song.id } } ?: false
 
@@ -50,16 +57,37 @@ fun NowPlayingSheet(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Album Art
-                AsyncImage(
-                    model = AudioRepository.getAlbumArtUri(currentSong!!.albumId),
-                    contentDescription = "Album Art",
-                    contentScale = ContentScale.Crop,
+                Box(
                     modifier = Modifier
                         .aspectRatio(1f)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(32.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
+                ) {
+                    if (blurBg) {
+                        AsyncImage(
+                            model = AudioRepository.getAlbumArtUri(currentSong!!.albumId),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(if (blurBg) 24.dp else 0.dp),
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
+                                androidx.compose.ui.graphics.BlendMode.Darken
+                            )
+                        )
+                    }
+
+                    AsyncImage(
+                        model = AudioRepository.getAlbumArtUri(currentSong!!.albumId),
+                        contentDescription = "Album Art",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(if (blurBg) 24.dp else 0.dp)
+                            .clip(RoundedCornerShape(if (blurBg) 16.dp else 32.dp))
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
@@ -90,6 +118,12 @@ fun NowPlayingSheet(
                             contentDescription = "Favorite",
                             tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                    IconButton(onClick = { /* Set as Ringtone */ }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Notifications, contentDescription = "Set as Ringtone")
+                    }
+                    IconButton(onClick = { /* Show Details */ viewModel.showSongInfoDialog(currentSong!!) }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Info, contentDescription = "Song Info")
                     }
                 }
                 
@@ -127,14 +161,18 @@ fun NowPlayingSheet(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Controls
+                // Controls (Shuffle, Fast Rewind, Play/Pause, Fast Forward, Repeat)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { /* Shuffle */ }) {
-                        Icon(Icons.Default.Shuffle, "Shuffle")
+                    IconButton(onClick = { viewModel.toggleShuffleMode() }) {
+                        Icon(
+                            Icons.Default.Shuffle, 
+                            "Shuffle",
+                            tint = if (shuffleMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                     
                     IconButton(
@@ -163,12 +201,51 @@ fun NowPlayingSheet(
                         Icon(Icons.Default.SkipNext, "Next", modifier = Modifier.size(36.dp))
                     }
                     
-                    IconButton(onClick = { /* Repeat */ }) {
-                        Icon(Icons.Default.Repeat, "Repeat")
+                    IconButton(onClick = { viewModel.toggleRepeatMode() }) {
+                        val repeatIcon = when (repeatMode) {
+                            Player.REPEAT_MODE_ALL -> Icons.Default.Repeat
+                            Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                            else -> Icons.Default.Repeat
+                        }
+                        val repeatTint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        Icon(repeatIcon, "Repeat", tint = repeatTint)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Secondary Controls: Fast Rewind, Speed, Fast Forward
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { viewModel.seekBack() }) {
+                        Icon(Icons.Default.FastRewind, "Rewind 10s")
+                    }
+
+                    TextButton(onClick = { 
+                        val nextSpeed = when (playbackSpeed) {
+                            1.0f -> 1.5f
+                            1.5f -> 2.0f
+                            2.0f -> 0.5f
+                            else -> 1.0f
+                        }
+                        viewModel.setPlaybackSpeed(nextSpeed)
+                    }) {
+                        Text("${playbackSpeed}x", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                    }
+
+                    IconButton(onClick = { viewModel.seekForward() }) {
+                        Icon(Icons.Default.FastForward, "Forward 10s")
                     }
                 }
             }
         }
+    }
+    
+    if (currentSongInfo != null) {
+        SongInfoDialog(song = currentSongInfo!!, onDismiss = { viewModel.dismissSongInfoDialog() })
     }
 }
 
@@ -177,4 +254,30 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return String.format("%02d:%02d", minutes, seconds)
+}
+
+@Composable
+fun SongInfoDialog(song: com.example.core.model.Song, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Track Details") },
+        text = {
+            Column {
+                Text("Title: ${song.title}")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Artist: ${song.artist}")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Path: ${song.data}")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Size: ${song.size / 1024 / 1024} MB")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Duration: ${formatDuration(song.duration)}")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    )
 }
